@@ -1,6 +1,7 @@
 package multiple_api
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/alitto/pond"
@@ -8,9 +9,21 @@ import (
 	"net/http"
 )
 
-func fetch(url string, ctx context.Context, c chan []byte) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	resp, err := http.DefaultClient.Do(req)
+type RequestApi struct {
+	Url    string
+	Method string
+	Body   string
+}
+
+func fetch(req RequestApi, c chan []byte) error {
+	reqBody := bytes.NewReader([]byte(req.Body))
+	request, err := http.NewRequest(req.Method, req.Url, reqBody)
+	if err != nil {
+		fmt.Printf("client: could not create request: %s\n", err)
+		return err
+	}
+
+	resp, err := http.DefaultClient.Do(request)
 	if err == nil {
 		defer resp.Body.Close()
 	}
@@ -24,13 +37,13 @@ func fetch(url string, ctx context.Context, c chan []byte) error {
 	return err
 }
 
-func MultipleCall(pool *pond.WorkerPool, urls []string, c chan []byte) [][]byte {
-	group, ctx := pool.GroupContext(context.Background())
+func MultipleCall(pool *pond.WorkerPool, reqs []RequestApi, c chan []byte) [][]byte {
+	group, _ := pool.GroupContext(context.Background())
 
-	for _, url := range urls {
+	for _, req := range reqs {
 		group.Submit(func() error {
 			fmt.Println("start fetch")
-			err := fetch(url, ctx, c)
+			err := fetch(req, c)
 			return err
 		})
 	}

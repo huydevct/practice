@@ -13,15 +13,23 @@ func main() {
 		"https://www.google.com/",
 		"https://www.github.com/",
 	}
+	reqs := []call.RequestApi{}
+	for _, url := range urls {
+		req := call.RequestApi{
+			Url:    url,
+			Method: "GET",
+		}
+		reqs = append(reqs, req)
+	}
 
 	pool := pond.New(1, 1000)
 	defer pool.StopAndWait()
 
-	res := make(chan []byte, len(urls))
+	res := make(chan []byte, len(reqs))
 	resp := [][]byte{}
 	r := gin.Default()
 	r.GET("/mulFetch", func(c *gin.Context) {
-		resp = call.MultipleCall(pool, urls, res)
+		resp = call.MultipleCall(pool, reqs, res)
 
 		c.JSON(http.StatusOK, gin.H{
 			"response": resp,
