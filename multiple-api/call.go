@@ -42,11 +42,7 @@ func MultipleCall(pool *pond.WorkerPool, urls []string, c chan []byte) [][]byte 
 
 	res := [][]byte{}
 
-	for re := range c {
-		res = append(res, re)
-	}
-
-	close(c)
+	res = append(res, <-c)
 
 	fmt.Println("Successfully fetched all URLs")
 
