@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/alitto/pond"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -17,15 +18,19 @@ func main() {
 	pool := pond.New(1, 1000)
 	defer pool.StopAndWait()
 
-	res := make(chan *http.Response, len(urls))
-
+	res := make(chan []byte, len(urls))
+	resp := [][]byte{}
 	r := gin.Default()
 	r.GET("/mulFetch", func(c *gin.Context) {
-		go call.MultipleCall(pool, urls, res)
+		go func() {
+			resp = call.MultipleCall(pool, urls, res)
+		}()
 
 		c.JSON(http.StatusOK, gin.H{
-			"response": "pong",
+			"response": "resp",
 		})
+
+		fmt.Println(resp)
 	})
 
 	r.Run()

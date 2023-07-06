@@ -4,20 +4,27 @@ import (
 	"context"
 	"fmt"
 	"github.com/alitto/pond"
+	"io"
 	"net/http"
 )
 
-func fetch(url string, ctx context.Context, c chan<- *http.Response) error {
+func fetch(url string, ctx context.Context, c chan []byte) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	resp, err := http.DefaultClient.Do(req)
 	if err == nil {
-		resp.Body.Close()
+		defer resp.Body.Close()
 	}
-	c <- resp
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	c <- body
 	return err
 }
 
-func MultipleCall(pool *pond.WorkerPool, urls []string, c chan<- *http.Response) {
+func MultipleCall(pool *pond.WorkerPool, urls []string, c chan []byte) [][]byte {
 	group, ctx := pool.GroupContext(context.Background())
 
 	for _, url := range urls {
@@ -33,7 +40,15 @@ func MultipleCall(pool *pond.WorkerPool, urls []string, c chan<- *http.Response)
 		fmt.Printf("Failed to fetch URLs: %v", err)
 	}
 
-	//close(c)
+	res := [][]byte{}
+
+	for re := range c {
+		res = append(res, re)
+	}
+
+	close(c)
 
 	fmt.Println("Successfully fetched all URLs")
+
+	return res
 }
